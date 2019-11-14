@@ -19,6 +19,7 @@ from sklearn.cluster import KMeans
 import markov_clustering as mc
 import community as louvain
 import os
+import json
 
 plt.style.use('seaborn') # pretty matplotlib plots
 plt.rc('font', size=14)
@@ -127,34 +128,75 @@ def sim_to_dist(matrix):
 
 ####################
 
-G = nx.read_edgelist("../data/com-dblp.ungraph.txt")
+
+
+G = nx.read_edgelist("../data/git_web_ml/git_edges.csv", delimiter=",")
 print(nx.info(G))
-file = "../data/com-dblp.all.cmty.txt"
-true = [0 for i in range(len(G.nodes()))]
+with open('../data/git_web_ml/git_features.json') as f:
+  data = json.load(f)
 
-cluster = 0
-with open(file) as fp:  
-   line = fp.readline()
-   cnt = 1
-   while line:
-       data = line.split("\t")
-       for i in data:
-            # true[int(i)] = cluster
-            if (int(i) > 317000):
-                print(int(i))
-       line = fp.readline()
+maxFeature = 0
+for key, value in data.items():
+    maxValue = max(value)
+    if maxValue > maxFeature:
+        maxFeature = maxValue
 
-   cluster += 1
-# print(true)
+X = np.zeros((len(G.nodes), maxFeature))
+for key, features in data.items():
+    for feature in features:
+        X[int(key)][int(feature)-1] = 1
+
+
+trueDataFrame = pd.read_csv("../data/git_web_ml/git_target.csv")
+true = trueDataFrame["ml_target"].values
+
 adj = nx.adjacency_matrix(G).todense()
-encoder = LabelEncoder()
-true = encoder.fit_transform(true)
+G = nx.Graph(adj)
+adj = nx.adjacency_matrix(G).todense()
+n_clusters = len(set(true))
 
-model_hac = hac(n_clusters=len(set(true)), affinity="precomputed",linkage="average")
-model_kmeans = KMeans(n_clusters=len(set(true)))
-tsne = TSNE(n_components=2, metric='precomputed')
-np.savetxt('file.csv', adj, delimiter='\t')
-print(adj.shape)
+np.savetxt('file.csv', adj, delimiter='\t', fmt='%u')
+np.savetxt('file_attributes.csv', X, delimiter='\t', fmt='%f')
+
+start = time.time()
+ensemble_density_huge('file.csv', "'\t'")
+
+
+
+sims_attributes = ensemble_attributes("file_attributes.csv", "\t")
+
+
+nmis_structure, nmis_attributes, nmis_both = test_clustering(20)
+print("Structure : {0}, {1}".format(np.mean(nmis_structure), np.std(nmis_structure)))
+print("Attributes : {0}, {1}".format(np.mean(nmis_attributes), np.std(nmis_attributes)))
+print("Both : {0}, {1}".format(np.mean(nmis_both), np.std(nmis_both)))
+
+
+# true = [0 for i in range(len(G.nodes()))]
+
+# cluster = 0
+# with open(file) as fp:  
+#    line = fp.readline()
+#    cnt = 1
+#    while line:
+#        data = line.split("\t")
+#        for i in data:
+#             # true[int(i)] = cluster
+#             if (int(i) > 317000):
+#                 print(int(i))
+#        line = fp.readline()
+
+#    cluster += 1
+# # print(true)
+# adj = nx.adjacency_matrix(G).todense()
+# encoder = LabelEncoder()
+# true = encoder.fit_transform(true)
+
+# model_hac = hac(n_clusters=len(set(true)), affinity="precomputed",linkage="average")
+# model_kmeans = KMeans(n_clusters=len(set(true)))
+# tsne = TSNE(n_components=2, metric='precomputed')
+# np.savetxt('file.csv', adj, delimiter='\t')
+# print(adj.shape)
 
 
 # A = sio.mmread('../data/hvr/A.mtx')
