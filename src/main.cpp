@@ -233,8 +233,8 @@ MatrixXd build_randomized_tree_and_get_sim(const vector<vector<int>> &data,
 
         for (int instance1 : left_instances) {
             for (int instance2 : right_instances) {
-                matrix(instance1,instance2) += (left_instances.size() + right_instances.size());
-                matrix(instance2,instance1) += (left_instances.size() + right_instances.size());
+              matrix(instance2,instance1) = matrix(instance1,instance2) += (left_instances.size() + right_instances.size());
+
         }
     }
   }
